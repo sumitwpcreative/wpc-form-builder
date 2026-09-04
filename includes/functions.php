@@ -42,7 +42,7 @@ add_action( 'add_meta_boxes', 'wpcfb_custom_meta_boxes' );
 function wpcfb_meta_box_callback(){
     wp_nonce_field('wpcfb_save_meta_box', 'wpcfb_meta_box_nonce');
     $field_types = wpcfb_get_field_types();
-    $existing_fields = get_post_meta( get_the_ID(), '_wpcfb_fiels', true);
+    $existing_fields = get_post_meta( get_the_ID(), '_wpcfb_fields', true);
     if( ! is_array( $existing_fields ) ) {
         $existing_fields = array();
     }
@@ -65,7 +65,7 @@ function wpcfb_meta_box_callback(){
                     <?php endforeach; ?>
                 </div>
                 <ul class="wpcfb-canvas" id="wpcfb-canvas"></ul>
-                <textarea name="wpcfb-fields-json" id="wpcfb-fields-json"></textarea>
+                <textarea name="wpcfb-fields-json" id="wpcfb-fields-json"><?php echo esc_textarea( wp_json_encode( $existing_fields ) ); ?></textarea>
                 
             </div>
 
@@ -100,32 +100,46 @@ function wpcfb_save_meta_box( $post_id ){
     }
 
     // Temporary for testing
-    $test_fields = array(
-        array('type' => 'text', 'label' => 'Full Name', 'name' => 'full_name', 'required' => true, 'placeholder' => 'Jane Doe'),
-        array('type' => 'email', 'label' => 'Email', 'name' => 'email', 'required' => true ),
-        array('type' => 'textarea', 'label' => 'Message', 'name' => 'message', 'required' => false)
-    );
+    // $test_fields = array(
+    //     array('type' => 'text', 'label' => 'Full Name', 'name' => 'full_name', 'required' => true, 'placeholder' => 'Jane Doe'),
+    //     array('type' => 'email', 'label' => 'Email', 'name' => 'email', 'required' => true ),
+    //     array('type' => 'textarea', 'label' => 'Message', 'name' => 'message', 'required' => false)
+    // );
 
-    update_post_meta($post_id, '_wpcfb_fields', $test_fields);
+    // update_post_meta($post_id, '_wpcfb_fields', $test_fields);
 
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
+    if ( isset( $_POST['wpcfb-fields-json'] ) ){
+        $decoded = json_decode( wp_unslash( $_POST['wpcfb-fields-json'] ), true );
+        $fields = array();
+
+        if ( is_array( $decoded ) ){
+            foreach ( $decoded as $field ) {
+                $fields[] = array(
+                    'id'    => sanitize_text_field( $field['id'] ?? '' ),
+                    'type'    => sanitize_key( $field['type'] ?? '' ),
+                    'label'    => sanitize_text_field( $field['label'] ?? '' ),
+                    'name'    => sanitize_key( $field['name'] ?? '' ),
+                    'required'    => ! empty( $field['required'] ),
+                    'placeholder'    => sanitize_text_field( $field['placeholder'] ?? '' ),
+                );
+            }
+        }
+        update_post_meta( $post_id, '_wpcfb_fields', $fields);
     }
 
-    if ( ! current_user_can( 'edit_post', $post_id ) ) {
-        return;
-    }
+    // if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+    //     return;
+    // }
 
-    if ( ! isset( $_POST['wpcfb-form'] ) ) {
-        return;
-    }
+    // if ( ! current_user_can( 'edit_post', $post_id ) ) {
+    //     return;
+    // }
 
-    remove_action( 'save_post_wpcfb_form', 'wpcfb_save_meta_box' );
+    // if ( ! isset( $_POST['wpcfb-form'] ) ) {
+    //     return;
+    // }
 
-    wp_update_post( array(
-        'ID'           => $post_id,
-        'post_content' => wp_kses_post( wp_unslash( $_POST['wpcfb-form'] ) ),
-    ) );
+    // remove_action( 'save_post_wpcfb_form', 'wpcfb_save_meta_box' );
 
-    add_action( 'save_post_wpcfb_form', 'wpcfb_save_meta_box' );
+    // add_action( 'save_post_wpcfb_form', 'wpcfb_save_meta_box' );
 }
