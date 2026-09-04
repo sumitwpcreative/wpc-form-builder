@@ -1,0 +1,37 @@
+.wpcfb-tab-panel{
+    display: none;
+}
+.wpcfb-tab-panel.active{
+    display: block;
+}
+.wpcfb-tab-nav {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #c5c5c5;
+}
+
+li.wpcfb-tab-link {
+    margin: 0;
+    padding: 6px 16px;
+    background-color: #e3e3e3;
+    border: 1px solid #e3e3e3;
+    border-bottom: none;
+}
+
+li.wpcfb-tab-link.active {
+    border-bottom: 1px solid #fff;
+    margin-bottom: -2px;
+    border-top: 1px solid #c5c5c5;
+    border-left: 1px solid #c5c5c5;
+    border-right: 1px solid #c5c5c5;
+    background: #fff;
+}
+
+/* Form Builder */
+.wpcfb-builder { display: flex; gap: 20px; margin-top: 10px; }
+.wpcfb-palette { display: flex; flex-direction: column; gap: 6px; width: 160px; }
+.wpcfb-canvas { flex: 1; list-style: none; margin: 0; padding: 0; }
+.wpcfb-field-card { display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 6px; background: #f6f7f7; border: 1px solid #ddd; }
+.wpcfb-field-handle { cursor: move; }
