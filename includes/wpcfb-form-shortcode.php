@@ -13,6 +13,7 @@ function wpcfb_form_shortcode_callback( $atts ) {
             call_user_func( $types[ $field['type'] ]['render'], $field );
         }
     }
+    echo '<button type="button">Submit</button>';
     echo '</form>';
     return ob_get_clean();
 }
