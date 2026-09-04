@@ -61,11 +61,20 @@ $(document).ready(function(){
     });
 
     $('#wpcfb-canvas').on('change', '.wpcfb-field-required', function(){
-
+        fields[$(this).data('index')].required = $(this).is(':checked');
+        syncJson();
     });
 
     $('#wpcfb-canvas').sortable({
-
+        handle: '.wpcfb-field-handle',
+        update: function(){
+            const newOrder = [];
+            $('#wpcfb-canvas .wpcfb-field-card').each(function(){
+                newOrder.push(fields[$(this).data('index')]);
+            });
+            fields = newOrder;
+            renderCanvas();
+        }
     });
     renderCanvas();
 });
