@@ -62,3 +62,6 @@ li.wpcfb-tab-link.active {
 .wpcfb-setting label{ display: inline-block; min-width: 110px; font-weight: 600; }
 #wpcfb-tab-settings .wpcfb-setting input{ margin-left: 0; }
 .wpcfb-setting .description{ display: block; margin: 4px 0 0 114px; }
+.wpcfb-settings-heading--first{ margin-top: 0; }
+#wpcfb-tab-settings .wpcfb-setting textarea{ display: block; max-width: 560px; margin-top: 6px; }
+#wpcfb-tab-settings .wpcfb-setting textarea + .description{ margin-left: 0; }

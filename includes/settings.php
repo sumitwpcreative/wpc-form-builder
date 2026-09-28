@@ -13,6 +13,7 @@ function wpcfb_get_settings(){
         'rate_limit'           => 10,
         'turnstile_site_key'   => '',
         'turnstile_secret_key' => '',
+        'success_message'      => '',
     );
     $settings = get_option( 'wpcfb_settings', array() );
     return wp_parse_args( is_array( $settings ) ? $settings : array(), $defaults );
@@ -92,6 +93,7 @@ function wpcfb_sanitize_settings( $input ){
     return array(
         'notify_to'      => implode( ', ', $notify_to ),
         'notify_subject' => '' !== $subject ? $subject : 'New submission: {form_title}',
+        'success_message' => sanitize_textarea_field( $input['success_message'] ?? '' ),
         'from_name'      => wpcfb_sanitize_header_text( $input['from_name'] ?? '' ),
         'from_email'     => $from_email,
         'rate_limit'           => max( 0, min( 1000, (int) ( $input['rate_limit'] ?? 10 ) ) ),
@@ -144,6 +146,17 @@ function wpcfb_settings_page_callback(){
                     <td>
                         <input type="email" class="regular-text" id="wpcfb-from-email" name="wpcfb_settings[from_email]" value="<?php echo esc_attr( $settings['from_email'] ); ?>">
                         <p class="description"><?php esc_html_e( 'Leave blank to use your SMTP plugin or WordPress default. If set, use an address on your own domain or emails may land in spam.', 'wpc-form-builder' ); ?></p>
+                    </td>
+                </tr>
+            </table>
+
+            <h2><?php esc_html_e( 'Form Defaults', 'wpc-form-builder' ); ?></h2>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="wpcfb-success-message"><?php esc_html_e( 'Success message', 'wpc-form-builder' ); ?></label></th>
+                    <td>
+                        <textarea class="large-text" rows="3" id="wpcfb-success-message" name="wpcfb_settings[success_message]" placeholder="<?php echo esc_attr( wpcfb_default_success_message() ); ?>"><?php echo esc_textarea( $settings['success_message'] ); ?></textarea>
+                        <p class="description"><?php esc_html_e( 'Shown after a successful submission. Each form can override this in its Settings tab.', 'wpc-form-builder' ); ?></p>
                     </td>
                 </tr>
             </table>

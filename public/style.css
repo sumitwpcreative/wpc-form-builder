@@ -22,3 +22,6 @@
 .wpcfb-message--error{
     color: #b32d2e;
 }
+.wpcfb-message{
+    white-space: pre-line;
+}

@@ -72,6 +72,52 @@ function wpcfb_get_form_style( $post_id ){
     return $defaults;
 }
 
+function wpcfb_default_success_message(){
+    return __( 'Thank you. Your message has been sent.', 'wpc-form-builder' );
+}
+
+// Per-form behaviour settings. Blank values fall back: form > global setting > built-in default.
+function wpcfb_get_form_settings( $form_id ){
+    $saved = get_post_meta( $form_id, '_wpcfb_form_settings', true );
+    $saved = is_array( $saved ) ? $saved : array();
+
+    return array(
+        'button_label'    => (string) ( $saved['button_label'] ?? '' ),
+        'success_message' => (string) ( $saved['success_message'] ?? '' ),
+        'redirect_url'    => (string) ( $saved['redirect_url'] ?? '' ),
+    );
+}
+
+function wpcfb_get_button_label( $form_id ){
+    $label = wpcfb_get_form_settings( $form_id )['button_label'];
+    return '' !== $label ? $label : __( 'Submit', 'wpc-form-builder' );
+}
+
+function wpcfb_get_success_message( $form_id ){
+    $message = wpcfb_get_form_settings( $form_id )['success_message'];
+    if ( '' === $message ) {
+        $message = wpcfb_get_settings()['success_message'];
+    }
+    return '' !== $message ? $message : wpcfb_default_success_message();
+}
+
+// Success response. Also used for silently-blocked spam, so bots see exactly what a person would.
+function wpcfb_success_payload( $form ){
+    $payload = array(
+        'message'    => wpcfb_get_success_message( $form->ID ),
+        'form_id'    => $form->ID,
+        'form_title' => $form->post_title,
+    );
+
+    $redirect = wpcfb_get_form_settings( $form->ID )['redirect_url'];
+    if ( '' !== $redirect ) {
+        // Relative paths are resolved against the site so "/thank-you" works on staging and live.
+        $payload['redirect'] = 0 === strpos( $redirect, '/' ) && 0 !== strpos( $redirect, '//' ) ? home_url( $redirect ) : $redirect;
+    }
+
+    return apply_filters( 'wpcfb_success_payload', $payload, $form );
+}
+
 // Custom Meta Boxes
 function wpcfb_custom_meta_boxes(){
     add_meta_box(
@@ -128,6 +174,16 @@ function wpcfb_meta_box_callback(){
                     <p>Edit the form settings here.</p>
                 </div>
                 <div class="wpcfb-tab-panel-body">
+                    <?php
+                    $form_settings  = wpcfb_get_form_settings( get_the_ID() );
+                    $global_success = wpcfb_get_settings()['success_message'];
+                    ?>
+                    <h3 class="wpcfb-settings-heading wpcfb-settings-heading--first"><?php esc_html_e( 'Button', 'wpc-form-builder' ); ?></h3>
+                    <p class="wpcfb-setting">
+                        <label for="wpcfb-button-label"><?php esc_html_e( 'Button label', 'wpc-form-builder' ); ?></label>
+                        <input type="text" class="regular-text" name="wpcfb-button-label" id="wpcfb-button-label" value="<?php echo esc_attr( $form_settings['button_label'] ); ?>" placeholder="<?php esc_attr_e( 'Submit', 'wpc-form-builder' ); ?>" maxlength="60">
+                        <span class="description"><?php esc_html_e( 'Say what happens next, e.g. "Get my free quote" or "Book a call".', 'wpc-form-builder' ); ?></span>
+                    </p>
                     <label for="wpcfb-btn-color">
                         Button Color
                         <input type="color" name="wpcfb-btn-color" id="wpcfb-btn-color" value="<?php echo esc_attr( $form_styles['btn_color'] ); ?>">
@@ -137,6 +193,23 @@ function wpcfb_meta_box_callback(){
                         Button Text Color
                         <input type="color" name="wpcfb-btn-text-color" id="wpcfb-btn-text-color" value="<?php echo esc_attr( $form_styles['btn_text_color'] ); ?>">
                     </label>
+
+                    <h3 class="wpcfb-settings-heading"><?php esc_html_e( 'After Submit', 'wpc-form-builder' ); ?></h3>
+                    <p class="wpcfb-setting">
+                        <label for="wpcfb-success-message"><?php esc_html_e( 'Success message', 'wpc-form-builder' ); ?></label>
+                        <textarea class="large-text" rows="3" name="wpcfb-success-message" id="wpcfb-success-message" placeholder="<?php echo esc_attr( '' !== $global_success ? $global_success : wpcfb_default_success_message() ); ?>"><?php echo esc_textarea( $form_settings['success_message'] ); ?></textarea>
+                        <span class="description">
+                            <?php
+                            /* translators: %s: link to the global settings page */
+                            printf( wp_kses( __( 'Leave blank to use the <a href="%s">global message</a>.', 'wpc-form-builder' ), array( 'a' => array( 'href' => array() ) ) ), esc_url( admin_url( 'edit.php?post_type=wpcfb_form&page=wpcfb-settings' ) ) );
+                            ?>
+                        </span>
+                    </p>
+                    <p class="wpcfb-setting">
+                        <label for="wpcfb-redirect-url"><?php esc_html_e( 'Redirect to', 'wpc-form-builder' ); ?></label>
+                        <input type="text" class="regular-text" name="wpcfb-redirect-url" id="wpcfb-redirect-url" value="<?php echo esc_attr( $form_settings['redirect_url'] ); ?>" placeholder="/thank-you/">
+                        <span class="description"><?php esc_html_e( 'Optional. Send people to a thank-you page instead of showing the message. Use a path like /thank-you/ so it works on staging and live. A thank-you page is the most reliable way to track conversions in GA4 and Google Ads.', 'wpc-form-builder' ); ?></span>
+                    </p>
 
                     <?php
                     $notify          = wpcfb_get_form_notification( get_the_ID() );
@@ -274,26 +347,67 @@ function wpcfb_save_meta_box( $post_id ){
         ) );
 
         if ( $invalid ) {
-            set_transient( 'wpcfb_invalid_emails_' . get_current_user_id(), array_map( 'sanitize_text_field', $invalid ), 60 );
+            /* translators: %s: list of invalid email addresses */
+            wpcfb_add_save_notice( sprintf( __( 'These notification addresses were not valid and have been removed: %s', 'wpc-form-builder' ), implode( ', ', array_map( 'sanitize_text_field', $invalid ) ) ) );
         }
+
+        $raw_redirect = trim( wp_unslash( $_POST['wpcfb-redirect-url'] ?? '' ) );
+        $redirect     = wpcfb_sanitize_redirect_url( $raw_redirect );
+        if ( '' !== $raw_redirect && '' === $redirect ) {
+            /* translators: %s: the rejected URL */
+            wpcfb_add_save_notice( sprintf( __( 'The redirect URL "%s" was not valid and has been removed. Use a path like /thank-you/ or a full https:// address.', 'wpc-form-builder' ), sanitize_text_field( $raw_redirect ) ) );
+        }
+
+        update_post_meta( $post_id, '_wpcfb_form_settings', wp_slash( array(
+            'button_label'    => mb_substr( sanitize_text_field( wp_unslash( $_POST['wpcfb-button-label'] ?? '' ) ), 0, 60 ),
+            'success_message' => sanitize_textarea_field( wp_unslash( $_POST['wpcfb-success-message'] ?? '' ) ),
+            'redirect_url'    => $redirect,
+        ) ) );
     }
 }
 
-// Tell the editor which addresses were dropped on save.
-function wpcfb_invalid_email_notice(){
-    $key     = 'wpcfb_invalid_emails_' . get_current_user_id();
-    $invalid = get_transient( $key );
-    if ( ! $invalid ) {
+// A site path ("/thank-you/") or an absolute http(s) URL. Anything else (javascript:, data:, "//evil.com") returns ''.
+function wpcfb_sanitize_redirect_url( $url ){
+    $url = trim( (string) $url );
+    if ( '' === $url ) {
+        return '';
+    }
+
+    if ( 0 === strpos( $url, '/' ) ) {
+        // Check the cleaned value: esc_url_raw() strips characters, so "/\t/evil.com" becomes "//evil.com".
+        // Browsers treat "//" and "/\" as another host.
+        $clean = esc_url_raw( $url );
+        return preg_match( '#^/(?![/\\\\])#', $clean ) ? $clean : '';
+    }
+
+    // Require an explicit scheme and host: esc_url_raw() passes protocol-relative "//host" through untouched.
+    $parts = wp_parse_url( $url );
+    if ( empty( $parts['scheme'] ) || ! in_array( strtolower( $parts['scheme'] ), array( 'http', 'https' ), true ) || empty( $parts['host'] ) ) {
+        return '';
+    }
+    return esc_url_raw( $url, array( 'http', 'https' ) );
+}
+
+// Queue a warning to show on the next admin page load (the save redirects before notices render).
+function wpcfb_add_save_notice( $message ){
+    $key      = 'wpcfb_save_notices_' . get_current_user_id();
+    $notices  = (array) get_transient( $key );
+    $notices[] = $message;
+    set_transient( $key, array_filter( $notices ), 60 );
+}
+
+function wpcfb_render_save_notices(){
+    $key     = 'wpcfb_save_notices_' . get_current_user_id();
+    $notices = get_transient( $key );
+    if ( ! $notices ) {
         return;
     }
     delete_transient( $key );
-    printf(
-        '<div class="notice notice-warning is-dismissible"><p>%s</p></div>',
-        /* translators: %s: list of invalid email addresses */
-        esc_html( sprintf( __( 'These notification addresses were not valid and have been removed: %s', 'wpc-form-builder' ), implode( ', ', $invalid ) ) )
-    );
+    foreach ( (array) $notices as $message ) {
+        printf( '<div class="notice notice-warning is-dismissible"><p>%s</p></div>', esc_html( $message ) );
+    }
 }
-add_action( 'admin_notices', 'wpcfb_invalid_email_notice' );
+add_action( 'admin_notices', 'wpcfb_render_save_notices' );
 
 // Get a published form by ID, or null.
 function wpcfb_get_form( $form_id ){
@@ -355,7 +469,7 @@ function wpcfb_handle_submission(){
     $spam = wpcfb_spam_check( $form_data, $form );
     if ( $spam ) {
         if ( ! empty( $spam['silent'] ) ) {
-            wp_send_json_success( array( 'message' => __( 'Thank you. Your message has been sent.', 'wpc-form-builder' ) ) );
+            wp_send_json_success( wpcfb_success_payload( $form ) );
         }
         wp_send_json_error( array( 'message' => $spam['message'], 'code' => $spam['code'] ), $spam['status'] );
     }
@@ -439,5 +553,5 @@ function wpcfb_handle_submission(){
 
     do_action( 'wpcfb_submission_saved', $submission_id, $form->ID, $values );
 
-    wp_send_json_success( array( 'message' => __( 'Thank you. Your message has been sent.', 'wpc-form-builder' ) ) );
+    wp_send_json_success( wpcfb_success_payload( $form ) );
 }

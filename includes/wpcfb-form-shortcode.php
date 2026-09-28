@@ -31,7 +31,7 @@ function wpcfb_form_shortcode_callback( $atts ) {
         '<button type="submit" style="background-color:%1$s; border-color:%1$s; color:%2$s">%3$s</button>',
         esc_attr( $formStyle['btn_color'] ),
         esc_attr( $formStyle['btn_text_color'] ),
-        esc_html__( 'Submit', 'wpc-form-builder' )
+        esc_html( wpcfb_get_button_label( $form->ID ) )
     );
     echo '<div class="wpcfb-message" role="status" aria-live="polite"></div>';
     echo '</form>';

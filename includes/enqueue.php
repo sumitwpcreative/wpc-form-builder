@@ -32,7 +32,7 @@ function wpcfb_front_enqueue_script(){
     wp_localize_script('wpcfb_script', 'wpcfbData', array(
         'ajax_url' => admin_url('admin-ajax.php'),
         'messages' => array(
-            'success' => __( 'Thank you. Your message has been sent.', 'wpc-form-builder' ),
+            'success' => wpcfb_default_success_message(),
             'error'   => __( 'Something went wrong. Please try again.', 'wpc-form-builder' ),
         ),
     ));

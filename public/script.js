@@ -65,6 +65,35 @@ jQuery(function($){
         }
     }
 
+    // Conversion tracking. Fires a DOM event (for custom scripts) and a dataLayer event (for GTM),
+    // then redirects if the form has a thank-you page. The redirect waits for GTM (max 1s) so tags are not lost.
+    function trackSubmission($form, data){
+        const detail = { formId: data.form_id, formTitle: data.form_title };
+        $form[0].dispatchEvent(new CustomEvent('wpcfb_submitted', { bubbles: true, detail: detail }));
+
+        let redirected = false;
+        const redirect = function(){
+            if ( data.redirect && ! redirected ) {
+                redirected = true;
+                window.location.href = data.redirect;
+            }
+        };
+
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            event: 'wpcfb_submitted',
+            wpcfb_form_id: data.form_id,
+            wpcfb_form_title: data.form_title,
+            eventCallback: redirect,
+            eventTimeout: 1000
+        });
+
+        // eventCallback only runs when GTM is loaded, so always keep a fallback.
+        if ( data.redirect ) {
+            setTimeout(redirect, 1000);
+        }
+    }
+
     $('.wpcfb-form').one('focusin pointerdown', function(){
         getToken($(this));
     });
@@ -95,8 +124,10 @@ jQuery(function($){
                 });
             })
             .done(function(res){
-                showMessage($form, (res.data && res.data.message) || wpcfbData.messages.success, 'success');
+                const data = res.data || {};
+                showMessage($form, data.message || wpcfbData.messages.success, 'success');
                 $form[0].reset();
+                trackSubmission($form, data);
             })
             .fail(function(xhr){
                 const data = (xhr && xhr.responseJSON && xhr.responseJSON.data) || {};
