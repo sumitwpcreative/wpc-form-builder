@@ -8,6 +8,7 @@ function wpcfb_register_textarea_field($types){
     $types['textarea']  = array(
         'label' => 'Textarea',
         'render'    => 'wpcfb_render_textarea_field',
+        'order'     => 40,
     );
     return $types;
 }

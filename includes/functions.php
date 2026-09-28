@@ -11,6 +11,8 @@ function wpcfb_custom_post_type(){
             'all_items' => __('All Forms', 'wpc-form-builder'),
             'add_new'=> __('Add New Form'),
             'add_new_item'=> __('Add New Form'),
+            'edit_item' => __('Edit Form', 'wpc-form-builder'),
+            'singular_name' => __('Form', 'wpc-form-builder'),
             'not_found'=> __('No forms found'),
             'not_found_in_trash'=> __('No forms found in trash'),
         ),
@@ -146,26 +148,40 @@ function wpcfb_meta_box_callback(){
             <code>[wpcfb_form id='<?php echo get_the_ID(); ?>']</code>
             <ul class="wpcfb-tab-nav">
                 <li class="wpcfb-tab-link active" data-tab="form">Form</li>
+                <li class="wpcfb-tab-link" data-tab="preview"><?php esc_html_e( 'Preview', 'wpc-form-builder' ); ?></li>
                 <li class="wpcfb-tab-link" data-tab="settings">Settings</li>
             </ul>
 
             <div class="wpcfb-tab-panel active" id="wpcfb-tab-form">
                 <div class="wpcfb-tab-panel-header">
                     <h2>Form Builder</h2>
-                    <p>Edit the form template here.</p>
+                    <p><?php esc_html_e( 'Add fields, drag to reorder, and click a field to edit it. Set a width to put fields side by side.', 'wpc-form-builder' ); ?></p>
                 </div>
                 <div class="wpcfb-tab-panel-body">
                     <div class="wpcfb-palette">
+                        <span class="wpcfb-palette-label"><?php esc_html_e( 'Add field:', 'wpc-form-builder' ); ?></span>
                         <?php foreach ( $field_types as $type_key => $type_data ) : ?>
-                            <button type="button" class="wpcfb-add-field" data-type="<?php echo esc_attr($type_key) ?>">
+                            <button type="button" class="button wpcfb-add-field" data-type="<?php echo esc_attr($type_key) ?>">
                                 + <?php echo esc_html( $type_data['label']); ?>
                             </button>
                         <?php endforeach; ?>
                     </div>
-                    <ul class="wpcfb-canvas" id="wpcfb-canvas"></ul>
+                    <div class="wpcfb-builder">
+                        <ul class="wpcfb-canvas" id="wpcfb-canvas"></ul>
+                        <div class="wpcfb-field-settings" id="wpcfb-field-settings" aria-live="polite"></div>
+                    </div>
                     <textarea name="wpcfb-fields-json" id="wpcfb-fields-json"><?php echo esc_textarea( wp_json_encode( $existing_fields ) ); ?></textarea>
                 </div>
-                
+            </div>
+
+            <div class="wpcfb-tab-panel" id="wpcfb-tab-preview">
+                <div class="wpcfb-tab-panel-header">
+                    <h2><?php esc_html_e( 'Preview', 'wpc-form-builder' ); ?></h2>
+                    <p><?php esc_html_e( 'Shows unsaved changes. Your theme styles fonts and inputs on the live site, so it will look slightly different there.', 'wpc-form-builder' ); ?></p>
+                </div>
+                <div class="wpcfb-tab-panel-body">
+                    <div class="wpcfb-preview" id="wpcfb-preview"></div>
+                </div>
             </div>
 
             <div class="wpcfb-tab-panel" id="wpcfb-tab-settings">
@@ -295,39 +311,7 @@ function wpcfb_save_meta_box( $post_id ){
 
     if ( isset( $_POST['wpcfb-fields-json'] ) ){
         $decoded = json_decode( wp_unslash( $_POST['wpcfb-fields-json'] ), true );
-        $fields = array();
-        $used_names = array();
-
-        if ( is_array( $decoded ) ){
-            foreach ( $decoded as $field ) {
-                if ( ! is_array( $field ) ) {
-                    continue;
-                }
-
-                $name = sanitize_key( $field['name'] ?? '' );
-                if ( '' === $name ) {
-                    continue;
-                }
-
-                // Field names are submission keys, so they must be unique.
-                $unique_name = $name;
-                $suffix = 2;
-                while ( in_array( $unique_name, $used_names, true ) ) {
-                    $unique_name = $name . '_' . $suffix++;
-                }
-                $used_names[] = $unique_name;
-
-                $fields[] = array(
-                    'id'    => sanitize_text_field( $field['id'] ?? '' ),
-                    'type'    => sanitize_key( $field['type'] ?? '' ),
-                    'label'    => sanitize_text_field( $field['label'] ?? '' ),
-                    'name'    => $unique_name,
-                    'required'    => ! empty( $field['required'] ),
-                    'placeholder'    => sanitize_text_field( $field['placeholder'] ?? '' ),
-                );
-            }
-        }
-        update_post_meta( $post_id, '_wpcfb_fields', wp_slash( $fields ) );
+        update_post_meta( $post_id, '_wpcfb_fields', wp_slash( wpcfb_sanitize_fields( $decoded ) ) );
     }
 
     if ( isset( $_POST['wpcfb-btn-color'] ) ){
@@ -409,6 +393,36 @@ function wpcfb_render_save_notices(){
 }
 add_action( 'admin_notices', 'wpcfb_render_save_notices' );
 
+// Builder preview: renders the unsaved builder state with the same code as the live form.
+add_action( 'wp_ajax_wpcfb_preview', 'wpcfb_preview_callback' );
+function wpcfb_preview_callback(){
+    check_ajax_referer( 'wpcfb_preview', 'nonce' );
+
+    $form_id = absint( $_POST['form_id'] ?? 0 );
+    if ( ! $form_id || ! current_user_can( 'edit_post', $form_id ) ) {
+        wp_send_json_error( array( 'message' => __( 'You are not allowed to preview this form.', 'wpc-form-builder' ) ), 403 );
+    }
+
+    $fields = wpcfb_sanitize_fields( json_decode( wp_unslash( $_POST['fields'] ?? '[]' ), true ) );
+    $label  = sanitize_text_field( wp_unslash( $_POST['button_label'] ?? '' ) );
+    $style  = array(
+        'btn_color'      => sanitize_hex_color( wp_unslash( $_POST['btn_color'] ?? '' ) ) ?: '#2271b1',
+        'btn_text_color' => sanitize_hex_color( wp_unslash( $_POST['btn_text_color'] ?? '' ) ) ?: '#ffffff',
+    );
+
+    // A div, not a form: the preview is injected inside the post edit <form>, and browsers drop nested forms.
+    ob_start();
+    echo '<div class="wpcfb-form wpcfb-form--preview">';
+    if ( empty( $fields ) ) {
+        echo '<p class="description">' . esc_html__( 'Add fields on the Form tab to see them here.', 'wpc-form-builder' ) . '</p>';
+    }
+    echo wpcfb_render_form_fields( $fields ); // Escaped by each field renderer.
+    wpcfb_render_submit_button( '' !== $label ? $label : __( 'Submit', 'wpc-form-builder' ), $style, 'button' );
+    echo '</div>';
+
+    wp_send_json_success( array( 'html' => ob_get_clean() ) );
+}
+
 // Get a published form by ID, or null.
 function wpcfb_get_form( $form_id ){
     $form = get_post( absint( $form_id ) );
@@ -420,8 +434,9 @@ function wpcfb_get_form( $form_id ){
 
 // Sanitise a submitted value based on its field type.
 function wpcfb_sanitize_field_value( $value, $field ){
+    // Checkbox groups send an array. Drop anything nested (a tampered request), then join the ticked options.
     if ( is_array( $value ) ) {
-        $value = implode( ', ', array_map( 'strval', $value ) );
+        $value = implode( ', ', array_map( 'sanitize_text_field', array_filter( $value, 'is_scalar' ) ) );
     }
     $value = (string) $value;
 
@@ -493,10 +508,10 @@ function wpcfb_handle_submission(){
         $raw   = $form_data[ $name ] ?? '';
         $value = wpcfb_sanitize_field_value( $raw, $field );
 
-        // Validate email against the raw input: sanitize_email() blanks invalid addresses.
-        if ( 'email' === $field['type'] && is_string( $raw ) && '' !== trim( $raw ) && ! is_email( trim( $raw ) ) ) {
-            /* translators: %s: field label */
-            $errors[ $name ] = sprintf( __( '%s must be a valid email address.', 'wpc-form-builder' ), $label );
+        // Format checks (email, phone, allowed options) run on the raw input: sanitising would blank or alter bad values.
+        $format_error = wpcfb_validate_field_value( $raw, $field );
+        if ( '' !== $format_error ) {
+            $errors[ $name ] = $format_error;
             continue;
         }
 

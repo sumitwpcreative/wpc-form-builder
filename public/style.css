@@ -25,3 +25,65 @@
 .wpcfb-message{
     white-space: pre-line;
 }
+
+/* Field grid: columns sized by field width, wrapping into rows. */
+.wpcfb-fields{
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 16px;
+}
+.wpcfb-col{ min-width: 0; }
+.wpcfb-form .wpcfb-col input,
+.wpcfb-form .wpcfb-col select,
+.wpcfb-form .wpcfb-col textarea{
+    box-sizing: border-box;
+    max-width: 100%;
+}
+/* Width = W% minus that share of the 16px gaps, so any combination adding to 100 fills one row. */
+.wpcfb-col--100{ flex: 0 0 100%; }
+.wpcfb-col--75{ flex: 0 0 calc(75% - 4px); }
+.wpcfb-col--66{ flex: 0 0 calc(66.666% - 5.334px); }
+.wpcfb-col--50{ flex: 0 0 calc(50% - 8px); }
+.wpcfb-col--33{ flex: 0 0 calc(33.333% - 10.667px); }
+.wpcfb-col--25{ flex: 0 0 calc(25% - 12px); }
+
+@media (max-width: 600px){
+    .wpcfb-fields .wpcfb-col{ flex-basis: 100%; }
+}
+/* Block labels so inputs fill their column whatever the theme does with inline labels. */
+.wpcfb-form .wpcfb-field > label{
+    display: block;
+}
+
+/* Radio and checkbox groups */
+.wpcfb-form .wpcfb-choices{
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+.wpcfb-form .wpcfb-choices legend{
+    padding: 0;
+    margin-bottom: 6px;
+}
+.wpcfb-form .wpcfb-choice{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 6px;
+    cursor: pointer;
+}
+.wpcfb-form input[type="radio"],
+.wpcfb-form input[type="checkbox"]{
+    width: auto;
+    margin: 0;
+    flex: 0 0 auto;
+}
+.wpcfb-form select{
+    box-sizing: border-box;
+}
+/* Space below the whole group, so a validation error sits right under the options. */
+.wpcfb-form .wpcfb-field--radio,
+.wpcfb-form .wpcfb-field--checkbox{
+    margin-bottom: 1em;
+}

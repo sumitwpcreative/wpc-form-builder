@@ -9,12 +9,28 @@ jQuery(function($){
             .text(text);
     }
 
+    // Object.fromEntries(FormData) keeps only the last value per name, so ticked checkboxes would be lost.
+    // "name[]" inputs become an array under "name" (sent as formData[name][]), everything else a string.
+    function collectFormData(form){
+        const data = {};
+        for ( const [key, value] of new FormData(form) ) {
+            if ( key.slice(-2) === '[]' ) {
+                const name = key.slice(0, -2);
+                (data[name] = data[name] || []).push(value);
+            } else {
+                data[key] = value;
+            }
+        }
+        return data;
+    }
+
     function showFieldErrors($form, errors){
         $form.find('.wpcfb-field-error').remove();
         $form.find('[aria-invalid]').removeAttr('aria-invalid');
 
         $.each(errors || {}, function(name, message){
-            const $input = $form.find('[name="' + name + '"]');
+            // Checkbox groups are named "name[]"; radio groups share one name across inputs.
+            const $input = $form.find('[name="' + name + '"], [name="' + name + '[]"]');
             $input.attr('aria-invalid', 'true');
             $input.closest('.wpcfb-field').append($('<span class="wpcfb-field-error"></span>').text(message));
         });
@@ -114,7 +130,7 @@ jQuery(function($){
         getToken($form)
             .then(waitForMinimum)
             .then(function(token){
-                const formProps = Object.fromEntries(new FormData($form[0]));
+                const formProps = collectFormData($form[0]);
                 formProps.wpcfb_started = token.started;
 
                 return $.post(wpcfbData.ajax_url, {

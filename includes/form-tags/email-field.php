@@ -8,6 +8,7 @@ function wpcfb_register_email_field($types){
     $types['email']  = array(
         'label' => 'Email',
         'render'    => 'wpcfb_render_email_field',
+        'order'     => 20,
     );
     return $types;
 }

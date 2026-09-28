@@ -8,6 +8,7 @@ function wpcfb_register_text_field($types){
     $types['text']  = array(
         'label' => 'Text',
         'render'    => 'wpcfb_render_text_field',
+        'order'     => 10,
     );
     return $types;
 }
