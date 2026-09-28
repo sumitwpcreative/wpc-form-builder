@@ -137,7 +137,32 @@ function wpcfb_meta_box_callback(){
                         Button Text Color
                         <input type="color" name="wpcfb-btn-text-color" id="wpcfb-btn-text-color" value="<?php echo esc_attr( $form_styles['btn_text_color'] ); ?>">
                     </label>
-                    
+
+                    <?php
+                    $notify          = wpcfb_get_form_notification( get_the_ID() );
+                    $global_settings = wpcfb_get_settings();
+                    $global_to       = '' !== $global_settings['notify_to'] ? $global_settings['notify_to'] : get_option( 'admin_email' );
+                    ?>
+                    <h3 class="wpcfb-settings-heading"><?php esc_html_e( 'Email Notifications', 'wpc-form-builder' ); ?></h3>
+                    <label for="wpcfb-notify-enabled">
+                        <input type="checkbox" name="wpcfb-notify-enabled" id="wpcfb-notify-enabled" value="1" <?php checked( $notify['enabled'] ); ?>>
+                        <?php esc_html_e( 'Send an email for each submission', 'wpc-form-builder' ); ?>
+                    </label>
+                    <p class="wpcfb-setting">
+                        <label for="wpcfb-notify-to"><?php esc_html_e( 'Send to', 'wpc-form-builder' ); ?></label>
+                        <input type="text" class="regular-text" name="wpcfb-notify-to" id="wpcfb-notify-to" value="<?php echo esc_attr( $notify['to'] ); ?>" placeholder="<?php echo esc_attr( $global_to ); ?>">
+                        <span class="description">
+                            <?php
+                            /* translators: %s: link to the global settings page */
+                            printf( wp_kses( __( 'Separate multiple addresses with commas. Leave blank to use the <a href="%s">global setting</a>.', 'wpc-form-builder' ), array( 'a' => array( 'href' => array() ) ) ), esc_url( admin_url( 'edit.php?post_type=wpcfb_form&page=wpcfb-settings' ) ) );
+                            ?>
+                        </span>
+                    </p>
+                    <p class="wpcfb-setting">
+                        <label for="wpcfb-notify-subject"><?php esc_html_e( 'Subject', 'wpc-form-builder' ); ?></label>
+                        <input type="text" class="regular-text" name="wpcfb-notify-subject" id="wpcfb-notify-subject" value="<?php echo esc_attr( $notify['subject'] ); ?>" placeholder="<?php echo esc_attr( $global_settings['notify_subject'] ); ?>">
+                        <span class="description"><?php esc_html_e( 'Leave blank to use the global subject. Placeholders: {form_title}, {site_name}', 'wpc-form-builder' ); ?></span>
+                    </p>
                 </div>
             </div>
         </div>
@@ -238,8 +263,37 @@ function wpcfb_save_meta_box( $post_id ){
             'btn_text_color' => sanitize_hex_color( wp_unslash( $_POST['wpcfb-btn-text-color'] ?? '' ) ),
         );
         update_post_meta( $post_id, '_wpcfb_style', $formstyles );
+
+        // Notification settings live on the same tab, so save them alongside the styles.
+        $invalid = array();
+        $notify_to = wpcfb_parse_email_list( wp_unslash( $_POST['wpcfb-notify-to'] ?? '' ), $invalid );
+        update_post_meta( $post_id, '_wpcfb_notify', array(
+            'enabled' => ! empty( $_POST['wpcfb-notify-enabled'] ),
+            'to'      => implode( ', ', $notify_to ),
+            'subject' => wpcfb_sanitize_header_text( wp_unslash( $_POST['wpcfb-notify-subject'] ?? '' ) ),
+        ) );
+
+        if ( $invalid ) {
+            set_transient( 'wpcfb_invalid_emails_' . get_current_user_id(), array_map( 'sanitize_text_field', $invalid ), 60 );
+        }
     }
 }
+
+// Tell the editor which addresses were dropped on save.
+function wpcfb_invalid_email_notice(){
+    $key     = 'wpcfb_invalid_emails_' . get_current_user_id();
+    $invalid = get_transient( $key );
+    if ( ! $invalid ) {
+        return;
+    }
+    delete_transient( $key );
+    printf(
+        '<div class="notice notice-warning is-dismissible"><p>%s</p></div>',
+        /* translators: %s: list of invalid email addresses */
+        esc_html( sprintf( __( 'These notification addresses were not valid and have been removed: %s', 'wpc-form-builder' ), implode( ', ', $invalid ) ) )
+    );
+}
+add_action( 'admin_notices', 'wpcfb_invalid_email_notice' );
 
 // Get a published form by ID, or null.
 function wpcfb_get_form( $form_id ){
@@ -358,6 +412,7 @@ function wpcfb_handle_submission(){
                 'meta_input'   => array(
                     '_wpcfb_form_id' => $form->ID,
                     '_wpcfb_data'    => $values,
+                    '_wpcfb_page_url' => esc_url_raw( (string) wp_get_raw_referer() ),
                 ),
             )
         ),

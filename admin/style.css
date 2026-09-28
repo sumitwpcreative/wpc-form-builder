@@ -56,3 +56,9 @@ li.wpcfb-tab-link.active {
 /* Submission view */
 .wpcfb-submission-table th{ width: 200px; font-weight: 600; }
 .wpcfb-submission-table td, .wpcfb-submission-table th{ vertical-align: top; }
+
+/* Form settings tab */
+.wpcfb-settings-heading{ margin: 28px 0 12px; }
+.wpcfb-setting label{ display: inline-block; min-width: 110px; font-weight: 600; }
+#wpcfb-tab-settings .wpcfb-setting input{ margin-left: 0; }
+.wpcfb-setting .description{ display: block; margin: 4px 0 0 114px; }

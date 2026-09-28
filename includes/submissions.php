@@ -64,6 +64,17 @@ function wpcfb_submission_meta_box_callback( $submission ){
                 <th scope="row"><?php esc_html_e( 'Submitted', 'wpc-form-builder' ); ?></th>
                 <td><?php echo esc_html( get_the_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $submission ) ); ?></td>
             </tr>
+            <?php $page_url = get_post_meta( $submission->ID, '_wpcfb_page_url', true ); ?>
+            <?php if ( $page_url ) : ?>
+                <tr>
+                    <th scope="row"><?php esc_html_e( 'Page', 'wpc-form-builder' ); ?></th>
+                    <td><a href="<?php echo esc_url( $page_url ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $page_url ); ?></a></td>
+                </tr>
+            <?php endif; ?>
+            <tr>
+                <th scope="row"><?php esc_html_e( 'Notification', 'wpc-form-builder' ); ?></th>
+                <td><?php echo wp_kses_post( wpcfb_get_mail_status_label( $submission->ID ) ); ?></td>
+            </tr>
             <?php foreach ( $values as $name => $value ) : ?>
                 <tr>
                     <th scope="row"><?php echo esc_html( $labels[ $name ] ?? $name ); ?></th>
@@ -76,6 +87,27 @@ function wpcfb_submission_meta_box_callback( $submission ){
         </tbody>
     </table>
     <?php
+}
+
+// Human-readable notification status for a submission.
+function wpcfb_get_mail_status_label( $submission_id ){
+    $mail = get_post_meta( $submission_id, '_wpcfb_mail', true );
+    if ( ! is_array( $mail ) || empty( $mail['status'] ) ) {
+        return esc_html__( 'Not recorded', 'wpc-form-builder' );
+    }
+
+    switch ( $mail['status'] ) {
+        case 'sent':
+            // wp_mail() can only confirm hand-off to the mail transport, not inbox delivery. Say so.
+            /* translators: %s: recipient emails */
+            return '<span style="color:#007017">' . esc_html( sprintf( __( 'Sent to %s', 'wpc-form-builder' ), $mail['to'] ?? '' ) ) . '</span>'
+                . '<br><span class="description">' . esc_html__( 'Handed to the mail server. If it did not arrive, check your SMTP plugin log.', 'wpc-form-builder' ) . '</span>';
+        case 'disabled':
+            return esc_html__( 'Not sent (notifications are off for this form)', 'wpc-form-builder' );
+        default:
+            /* translators: %s: error message */
+            return '<span style="color:#b32d2e">' . esc_html( sprintf( __( 'Failed: %s', 'wpc-form-builder' ), $mail['error'] ?? '' ) ) . '</span>';
+    }
 }
 
 // First valid email in a submission, or ''.

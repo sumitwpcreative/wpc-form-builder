@@ -19,7 +19,9 @@ define('WPC_FORM_BUILDER_DIR_URL', plugin_dir_url( __FILE__ ));
 require plugin_dir_path( __FILE__ ) . 'includes/activate_deactivate.php';
 require plugin_dir_path( __FILE__ ) . 'includes/enqueue.php';
 require plugin_dir_path( __FILE__ ) . 'includes/functions.php';
+require plugin_dir_path( __FILE__ ) . 'includes/settings.php';
 require plugin_dir_path( __FILE__ ) . 'includes/submissions.php';
+require plugin_dir_path( __FILE__ ) . 'includes/notifications.php';
 require plugin_dir_path( __FILE__ ) . 'includes/field-types.php';
 
 foreach ( glob( plugin_dir_path( __FILE__ ) . 'includes/form-tags/*.php' ) as $field_type_file ) {
