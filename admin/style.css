@@ -35,3 +35,30 @@ li.wpcfb-tab-link.active {
 .wpcfb-canvas { flex: 1; list-style: none; margin: 0; padding: 0; }
 .wpcfb-field-card { display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 6px; background: #f6f7f7; border: 1px solid #ddd; }
 .wpcfb-field-handle { cursor: move; }
+#wpcfb-fields-json{display: none;}
+.wpcfb-tab-panel-header h2, .wpcfb-tab-panel-header p{
+    margin: 0!important;
+    padding: 0!important;
+}
+#wpcfb-tab-form .wpcfb-tab-panel-body{
+    display: flex;
+    justify-content: space-between;
+    gap: 32px;
+    margin-top: 32px;
+}
+
+#wpcfb-tab-settings .wpcfb-tab-panel-body{
+    margin-top: 32px;
+}
+#wpcfb-tab-settings .wpcfb-tab-panel-body input, #wpcfb-tab-settings .wpcfb-tab-panel-body select{
+    margin-left: 24px;
+}
+/* Submission view */
+.wpcfb-submission-table th{ width: 200px; font-weight: 600; }
+.wpcfb-submission-table td, .wpcfb-submission-table th{ vertical-align: top; }
+
+/* Form settings tab */
+.wpcfb-settings-heading{ margin: 28px 0 12px; }
+.wpcfb-setting label{ display: inline-block; min-width: 110px; font-weight: 600; }
+#wpcfb-tab-settings .wpcfb-setting input{ margin-left: 0; }
+.wpcfb-setting .description{ display: block; margin: 4px 0 0 114px; }

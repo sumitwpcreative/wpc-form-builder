@@ -12,12 +12,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define
 define( 'WPC_FORM_BUILDER_VERSION', '1.0.0' );
+define( 'WPC_FORM_BUILDER_FILE', __FILE__ );
 define('WPC_FORM_BUILDER_DIR_URL', plugin_dir_url( __FILE__ ));
 
 // Require
 require plugin_dir_path( __FILE__ ) . 'includes/activate_deactivate.php';
 require plugin_dir_path( __FILE__ ) . 'includes/enqueue.php';
 require plugin_dir_path( __FILE__ ) . 'includes/functions.php';
+require plugin_dir_path( __FILE__ ) . 'includes/settings.php';
+require plugin_dir_path( __FILE__ ) . 'includes/submissions.php';
+require plugin_dir_path( __FILE__ ) . 'includes/notifications.php';
 require plugin_dir_path( __FILE__ ) . 'includes/field-types.php';
 
 foreach ( glob( plugin_dir_path( __FILE__ ) . 'includes/form-tags/*.php' ) as $field_type_file ) {
@@ -25,7 +29,3 @@ foreach ( glob( plugin_dir_path( __FILE__ ) . 'includes/form-tags/*.php' ) as $f
 }
 
 require plugin_dir_path( __FILE__ ) . 'includes/wpcfb-form-shortcode.php';
-
-// add_action( 'admin_notices', function() {
-//     echo '<pre>'; print_r( wpcfb_get_field_types() ); echo '</pre>';
-// } );
