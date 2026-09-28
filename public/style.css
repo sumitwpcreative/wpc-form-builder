@@ -1,0 +1,24 @@
+.wpcfb-form input, .wpcfb-form select, .wpcfb-form textarea, .wpcfb-form label{
+    width: 100%;
+}
+.wpcfb-form button[disabled]{
+    opacity: .6;
+    cursor: wait;
+}
+.wpcfb-field-error{
+    display: block;
+    color: #b32d2e;
+    font-size: .875em;
+}
+.wpcfb-message:empty{
+    display: none;
+}
+.wpcfb-message{
+    margin-top: 12px;
+}
+.wpcfb-message--success{
+    color: #007017;
+}
+.wpcfb-message--error{
+    color: #b32d2e;
+}
