@@ -22,6 +22,7 @@ require plugin_dir_path( __FILE__ ) . 'includes/functions.php';
 require plugin_dir_path( __FILE__ ) . 'includes/settings.php';
 require plugin_dir_path( __FILE__ ) . 'includes/submissions.php';
 require plugin_dir_path( __FILE__ ) . 'includes/notifications.php';
+require plugin_dir_path( __FILE__ ) . 'includes/spam.php';
 require plugin_dir_path( __FILE__ ) . 'includes/field-types.php';
 
 foreach ( glob( plugin_dir_path( __FILE__ ) . 'includes/form-tags/*.php' ) as $field_type_file ) {

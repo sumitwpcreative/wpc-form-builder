@@ -25,6 +25,8 @@ function wpcfb_form_shortcode_callback( $atts ) {
             call_user_func( $types[ $field['type'] ]['render'], $field );
         }
     }
+    wpcfb_render_honeypot();
+    wpcfb_render_turnstile();
     printf(
         '<button type="submit" style="background-color:%1$s; border-color:%1$s; color:%2$s">%3$s</button>',
         esc_attr( $formStyle['btn_color'] ),

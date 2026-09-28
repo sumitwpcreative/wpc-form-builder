@@ -325,11 +325,15 @@ function wpcfb_sanitize_field_value( $value, $field ){
     return apply_filters( 'wpcfb_sanitize_field_value', $clean, $value, $field );
 }
 
-// Fresh nonce for the front end. Forms are page-cached, so a nonce printed into the HTML goes stale.
+// Fresh nonce + "form started" token for the front end. Forms are page-cached, so anything printed into the HTML goes stale.
 add_action( 'wp_ajax_wpcfb_get_nonce', 'wpcfb_get_nonce' );
 add_action( 'wp_ajax_nopriv_wpcfb_get_nonce', 'wpcfb_get_nonce' );
 function wpcfb_get_nonce(){
-    wp_send_json_success( array( 'nonce' => wp_create_nonce( 'wpcfb_form_submit' ) ) );
+    wp_send_json_success( array(
+        'nonce'   => wp_create_nonce( 'wpcfb_form_submit' ),
+        'started' => wpcfb_create_timing_token(),
+        'min_ms'  => wpcfb_min_submit_seconds() * 1000,
+    ) );
 }
 
 // Handle Form Submission
@@ -346,6 +350,14 @@ function wpcfb_handle_submission(){
     $form = wpcfb_get_form( $form_data['wpcfb_form_id'] ?? 0 );
     if ( ! $form ) {
         wp_send_json_error( array( 'message' => __( 'This form is no longer available.', 'wpc-form-builder' ) ), 404 );
+    }
+
+    $spam = wpcfb_spam_check( $form_data, $form );
+    if ( $spam ) {
+        if ( ! empty( $spam['silent'] ) ) {
+            wp_send_json_success( array( 'message' => __( 'Thank you. Your message has been sent.', 'wpc-form-builder' ) ) );
+        }
+        wp_send_json_error( array( 'message' => $spam['message'], 'code' => $spam['code'] ), $spam['status'] );
     }
 
     $fields = get_post_meta( $form->ID, '_wpcfb_fields', true );
@@ -422,6 +434,8 @@ function wpcfb_handle_submission(){
     if ( is_wp_error( $submission_id ) ) {
         wp_send_json_error( array( 'message' => __( 'Your message could not be saved. Please try again.', 'wpc-form-builder' ) ), 500 );
     }
+
+    wpcfb_record_rate_limit_hit();
 
     do_action( 'wpcfb_submission_saved', $submission_id, $form->ID, $values );
 
